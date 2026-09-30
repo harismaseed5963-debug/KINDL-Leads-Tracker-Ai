@@ -1,0 +1,181 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isBootstrapAdmin() {
+      return isAuthenticated() &&
+        request.auth.token.email == "azlanmaseed5963@gmail.com";
+    }
+
+    function userDocExists() {
+      return exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isActiveUser() {
+      return isBootstrapAdmin() ||
+        (isAuthenticated() && userDocExists() && getUserData().active == true);
+    }
+
+    function isAdmin() {
+      return isBootstrapAdmin() ||
+        (isAuthenticated() && userDocExists() && getUserData().active == true && getUserData().role == 'admin');
+    }
+
+    function isManagerOrAdmin() {
+      return isAdmin() ||
+        (isAuthenticated() && userDocExists() && getUserData().active == true && getUserData().role == 'manager');
+    }
+
+    function isValidRole(role) {
+      return role in ['admin', 'manager', 'member'];
+    }
+
+    function isValidUserProfile(data) {
+      return data.keys().hasAll(['uid', 'name', 'email', 'role', 'active']) &&
+        data.uid is string && data.uid.size() > 0 && data.uid.size() <= 128 &&
+        data.name is string && data.name.size() > 0 && data.name.size() <= 120 &&
+        data.email is string && data.email.size() > 3 && data.email.size() <= 180 &&
+        isValidRole(data.role) &&
+        data.active is bool;
+    }
+
+    function isValidLead(data) {
+      return data.keys().hasAll(['id', 'Full_Name', 'Phone_Number', 'phoneNormalized', 'Status', 'Lead_Category', 'createdBy', 'updatedBy']) &&
+        data.id is string && data.id.size() > 0 && data.id.size() <= 128 &&
+        data.Full_Name is string && data.Full_Name.size() > 0 && data.Full_Name.size() <= 200 &&
+        data.Phone_Number is string && data.Phone_Number.size() > 0 && data.Phone_Number.size() <= 40 &&
+        data.phoneNormalized is string && data.phoneNormalized.size() >= 7 && data.phoneNormalized.size() <= 25 &&
+        data.Status is string && data.Status.size() > 0 && data.Status.size() <= 80 &&
+        data.Lead_Category is string && data.Lead_Category.size() > 0 && data.Lead_Category.size() <= 80 &&
+        data.createdBy is string && data.createdBy.size() > 0 && data.createdBy.size() <= 128 &&
+        data.updatedBy is string && data.updatedBy.size() > 0 && data.updatedBy.size() <= 128 &&
+        (!('Age' in data) || (data.Age is string && data.Age.size() <= 20)) &&
+        (!('City' in data) || (data.City is string && data.City.size() <= 120)) &&
+        (!('Source' in data) || (data.Source is string && data.Source.size() <= 120)) &&
+        (!('Lead_Role' in data) || (data.Lead_Role is string && data.Lead_Role.size() <= 120)) &&
+        (!('Program' in data) || (data.Program is string && data.Program.size() <= 150)) &&
+        (!('Follow_Up_Time' in data) || (data.Follow_Up_Time is string && data.Follow_Up_Time.size() <= 60)) &&
+        (!('WhatsApp_Message' in data) || (data.WhatsApp_Message is string && data.WhatsApp_Message.size() <= 5000)) &&
+        (!('Time' in data) || (data.Time is string && data.Time.size() <= 60)) &&
+        (!('Description' in data) || (data.Description is string && data.Description.size() <= 5000)) &&
+        (!('deleted' in data) || data.deleted is bool);
+    }
+
+    // ===============================================================
+    // /users/{uid}
+    // ===============================================================
+    match /users/{uid} {
+      // Any authenticated user can read their own profile; active team members can read the team directory (needed for Assigned To dropdown & activity display)
+      allow read: if isOwner(uid) || isActiveUser();
+
+      // Creation:
+      // 1) Bootstrap admin can create their own admin profile
+      // 2) An existing Admin can create any user profile
+      // 3) A newly signed-up user can create their own profile as 'member' (active: true) if it doesn't exist yet
+      allow create: if isValidUserProfile(request.resource.data) && (
+        isAdmin() ||
+        (isOwner(uid) && isBootstrapAdmin() && request.resource.data.role == 'admin' && request.resource.data.active == true) ||
+        (isOwner(uid) && request.resource.data.role == 'member' && request.resource.data.active == true)
+      );
+
+      // Update:
+      // 1) Admin can update any user's role, active status, or name
+      // 2) An active user can update their own lastLoginAt or name, provided role and active remain unchanged
+      allow update: if isValidUserProfile(request.resource.data) && (
+        isAdmin() ||
+        (isOwner(uid) &&
+          resource.data.active == true &&
+          request.resource.data.role == resource.data.role &&
+          request.resource.data.active == resource.data.active &&
+          request.resource.data.email == resource.data.email)
+      );
+
+      allow delete: if isAdmin() && !isOwner(uid);
+    }
+
+    // ===============================================================
+    // /leads/{leadId}
+    // ===============================================================
+    match /leads/{leadId} {
+      allow read: if isActiveUser();
+
+      allow create: if isActiveUser() &&
+        isValidLead(request.resource.data) &&
+        request.resource.data.createdBy == request.auth.uid &&
+        request.resource.data.updatedBy == request.auth.uid;
+
+      allow update: if isActiveUser() &&
+        isValidLead(request.resource.data) &&
+        request.resource.data.createdBy == resource.data.createdBy &&
+        request.resource.data.updatedBy == request.auth.uid;
+
+      // Permanent hard deletion is restricted to Admins (normal delete is soft-delete via update)
+      allow delete: if isAdmin();
+    }
+
+    // ===============================================================
+    // /phoneIndex/{phoneNormalized}
+    // ===============================================================
+    match /phoneIndex/{phoneNormalized} {
+      allow read: if isActiveUser();
+
+      allow create, update: if isActiveUser() &&
+        request.resource.data.keys().hasAll(['phoneNormalized', 'leadId', 'Full_Name']) &&
+        request.resource.data.phoneNormalized == phoneNormalized &&
+        request.resource.data.leadId is string &&
+        request.resource.data.Full_Name is string &&
+        request.resource.data.Full_Name.size() <= 200;
+
+      allow delete: if isActiveUser();
+    }
+
+    // ===============================================================
+    // /leadActivities/{activityId}
+    // ===============================================================
+    match /leadActivities/{activityId} {
+      allow read: if isActiveUser();
+
+      // Activities are immutable once written
+      allow create: if isActiveUser() &&
+        request.resource.data.keys().hasAll(['leadId', 'action', 'performedBy', 'performedByName', 'details']) &&
+        request.resource.data.performedBy == request.auth.uid &&
+        request.resource.data.leadId is string &&
+        request.resource.data.action is string &&
+        request.resource.data.performedByName is string &&
+        request.resource.data.details is string &&
+        request.resource.data.details.size() <= 4000;
+
+      allow update, delete: if false;
+    }
+
+    // ===============================================================
+    // /settings/{settingId}
+    // ===============================================================
+    match /settings/{settingId} {
+      allow read: if isActiveUser();
+      allow create, update: if isActiveUser();
+      allow delete: if isAdmin();
+    }
+
+    // Default deny all other paths
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

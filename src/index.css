@@ -1,0 +1,54 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --bg-paper: #F7F3EB;
+    --bg-panel: #FFFDF9;
+    --bg-elevated: #F0E9DC;
+    --text-ink: #261C15;
+    --text-muted: #6E5D50;
+    --border-warm: #DED4C3;
+    --border-strong: #C5B69F;
+    --accent-orange: #D95D24;
+    --accent-orange-hover: #B84A18;
+    --accent-whatsapp: #1E7E48;
+  }
+
+  body {
+    background-color: var(--bg-paper);
+    color: var(--text-ink);
+    font-family: 'Source Serif 4', Georgia, Cambria, serif;
+    -webkit-font-smoothing: antialiased;
+    margin: 0;
+    padding: 0;
+  }
+
+  h1, h2, h3, h4, .font-serif-editorial {
+    font-family: 'Source Serif 4', Georgia, Cambria, serif;
+  }
+
+  .font-mono-tech {
+    font-family: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .font-sans-ui {
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+}
+
+/* Custom subtle warm scrollbars for data tables */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #F0E9DC;
+}
+::-webkit-scrollbar-thumb {
+  background: #C5B69F;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #9E8D75;
+}

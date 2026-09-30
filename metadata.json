@@ -1,0 +1,6 @@
+{
+  "name": "KINDL Leads Tracker — Team Edition",
+  "description": "Multi-user cloud lead tracking, WhatsApp workflow orchestration, role-based access control, and real-time synchronization for the KINDL team.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

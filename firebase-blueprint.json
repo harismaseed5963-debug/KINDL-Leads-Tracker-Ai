@@ -1,0 +1,122 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Team member profile with role-based access control and active status",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Firebase Auth UID" },
+        "name": { "type": "string", "description": "Full display name" },
+        "email": { "type": "string", "format": "email", "description": "Email address" },
+        "role": { "type": "string", "enum": ["admin", "manager", "member"], "description": "User permission role" },
+        "active": { "type": "boolean", "description": "Whether account is active" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Account creation timestamp" },
+        "lastLoginAt": { "type": "string", "format": "date-time", "description": "Last sign-in timestamp" }
+      },
+      "required": ["uid", "name", "email", "role", "active"]
+    },
+    "Lead": {
+      "title": "Lead",
+      "description": "KINDL shared lead record with ownership, audit fields, and soft-delete support",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique Lead ID" },
+        "Full_Name": { "type": "string", "description": "Lead full name" },
+        "Phone_Number": { "type": "string", "description": "Formatted phone number" },
+        "phoneNormalized": { "type": "string", "description": "Normalized canonical phone digits for duplicate prevention" },
+        "Age": { "type": "string", "description": "Age of the lead" },
+        "City": { "type": "string", "description": "City of residence" },
+        "Source": { "type": "string", "description": "Lead acquisition source" },
+        "Lead_Role": { "type": "string", "description": "Role of the lead" },
+        "Program": { "type": "string", "description": "Target KINDL program" },
+        "Lead_Category": { "type": "string", "description": "Lead temperature category (Hot, Warm, Cold, or custom)" },
+        "Status": { "type": "string", "description": "Pipeline status (New, Contacted, Qualified, Follow-Up, Convert, Lost, or custom)" },
+        "Follow_Up_Time": { "type": "string", "description": "Scheduled follow-up ISO/datetime string" },
+        "WhatsApp_Message": { "type": "string", "description": "Prepared WhatsApp template/message" },
+        "Time": { "type": "string", "description": "Lead entry timestamp string" },
+        "Description": { "type": "string", "description": "Lead notes and context" },
+        "assignedTo": { "type": "string", "description": "UID of assigned team member" },
+        "assignedToName": { "type": "string", "description": "Name of assigned team member" },
+        "activeWorkflowBy": { "type": "string", "description": "UID of user currently running WhatsApp workflow on this lead" },
+        "activeWorkflowByName": { "type": "string", "description": "Name of user currently running WhatsApp workflow" },
+        "activeWorkflowAt": { "type": "string", "description": "Timestamp when active workflow lock started" },
+        "deleted": { "type": "boolean", "description": "Soft-delete flag" },
+        "deletedAt": { "type": "string", "description": "Timestamp when soft-deleted" },
+        "deletedBy": { "type": "string", "description": "UID of user who deleted the lead" },
+        "deletedByName": { "type": "string", "description": "Name of user who deleted the lead" },
+        "createdBy": { "type": "string", "description": "UID of creator" },
+        "createdByName": { "type": "string", "description": "Name of creator" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server creation timestamp" },
+        "updatedBy": { "type": "string", "description": "UID of last editor" },
+        "updatedByName": { "type": "string", "description": "Name of last editor" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server update timestamp" },
+        "version": { "type": "number", "description": "Optimistic concurrency version counter" }
+      },
+      "required": ["id", "Full_Name", "Phone_Number", "phoneNormalized", "Status", "Lead_Category", "createdBy", "updatedBy"]
+    },
+    "PhoneIndex": {
+      "title": "PhoneIndex",
+      "description": "Server-side uniqueness registry mapping normalized phone numbers to active leads",
+      "type": "object",
+      "properties": {
+        "phoneNormalized": { "type": "string", "description": "Canonical phone key" },
+        "leadId": { "type": "string", "description": "Associated lead document ID" },
+        "Full_Name": { "type": "string", "description": "Name of lead owning this phone number" },
+        "updatedBy": { "type": "string", "description": "UID of user who registered/updated the phone" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Timestamp" }
+      },
+      "required": ["phoneNormalized", "leadId", "Full_Name"]
+    },
+    "LeadActivity": {
+      "title": "LeadActivity",
+      "description": "Immutable audit trail record for lead and system mutations",
+      "type": "object",
+      "properties": {
+        "leadId": { "type": "string", "description": "Target lead ID or system identifier" },
+        "leadName": { "type": "string", "description": "Lead full name at time of event" },
+        "action": { "type": "string", "description": "Short action code (e.g., LEAD_CREATED, STATUS_CHANGED, WHATSAPP_SENT)" },
+        "performedBy": { "type": "string", "description": "UID of user who performed the action" },
+        "performedByName": { "type": "string", "description": "Display name of user who performed the action" },
+        "timestamp": { "type": "string", "format": "date-time", "description": "Server timestamp of the activity" },
+        "details": { "type": "string", "description": "Human-readable description of changes" }
+      },
+      "required": ["leadId", "action", "performedBy", "performedByName", "details"]
+    },
+    "CustomOptions": {
+      "title": "CustomOptions",
+      "description": "Shared dropdown configuration for custom statuses, categories, sources, programs, and roles",
+      "type": "object",
+      "properties": {
+        "sources": { "type": "array", "items": { "type": "string" } },
+        "roles": { "type": "array", "items": { "type": "string" } },
+        "programs": { "type": "array", "items": { "type": "string" } },
+        "categories": { "type": "array", "items": { "type": "string" } },
+        "statuses": { "type": "array", "items": { "type": "string" } },
+        "updatedBy": { "type": "string" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      }
+    }
+  },
+  "firestore": {
+    "/users/{uid}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Authorized team members and role assignments"
+    },
+    "/leads/{leadId}": {
+      "schema": { "$ref": "#/entities/Lead" },
+      "description": "Shared KINDL leads collection"
+    },
+    "/phoneIndex/{phoneNormalized}": {
+      "schema": { "$ref": "#/entities/PhoneIndex" },
+      "description": "Unique phone number lock collection"
+    },
+    "/leadActivities/{activityId}": {
+      "schema": { "$ref": "#/entities/LeadActivity" },
+      "description": "Audit log and lead history events"
+    },
+    "/settings/{settingId}": {
+      "schema": { "$ref": "#/entities/CustomOptions" },
+      "description": "Shared team settings and custom dropdown values"
+    }
+  }
+}
